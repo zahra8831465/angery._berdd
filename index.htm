@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#83c9ed">
+<title>پرنده‌های تیرکمان‌دار</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#142538;color:white;font-family:system-ui,Tahoma,sans-serif;display:flex;justify-content:center;padding:10px}.app{width:min(100%,520px);display:flex;flex-direction:column;gap:9px}.top{display:flex;justify-content:space-between;align-items:center;gap:8px}h1{font-size:1.12rem;margin:0;color:#ffe58a}.stats{display:flex;gap:7px}.badge{background:#203950;border:1px solid #41617a;border-radius:12px;padding:7px 10px;font-size:.85rem;font-weight:bold}.stage{position:relative;border:3px solid #38566b;border-radius:18px;overflow:hidden;background:#9ad9f2;box-shadow:0 12px 28px #0005}canvas{display:block;width:100%;height:auto;aspect-ratio:480/640;touch-action:none}.overlay{position:absolute;inset:0;background:#10263bd9;display:flex;align-items:center;justify-content:center;text-align:center;padding:22px}.overlay.hide{display:none}.card{max-width:320px}.card h2{color:#ffe58a;margin:0 0 8px}.card p{line-height:1.8;color:#e0edf5;margin:0 0 16px}button{border:0;border-radius:14px;background:#ffe58a;color:#263344;padding:12px 22px;font-weight:900;font-size:1rem}.bottom{display:flex;justify-content:space-between;align-items:center;gap:8px;color:#b9ccda;font-size:.82rem}.bottom button{padding:9px 14px;font-size:.88rem}
+</style>
+</head>
+<body>
+<main class="app">
+<div class="top"><h1>🐦 پرنده‌های تیرکمان‌دار</h1><div class="stats"><div class="badge">امتیاز: <span id="score">۰</span></div><div class="badge">پرنده: <span id="birds">۳</span></div></div></div>
+<div class="stage"><canvas id="game" width="480" height="640"></canvas><div class="overlay" id="overlay"><div class="card"><h2 id="title">آماده‌ی نشانه‌گیری؟</h2><p id="desc">پرنده را با انگشت به عقب بکش و رها کن تا سازه‌ها را خراب کنی و خوک‌ها را بزنی!</p><button id="play">شروع بازی</button></div></div></div>
+<div class="bottom"><span>پرنده را عقب بکش و رها کن.</span><button id="reset">شروع دوباره ↻</button></div>
+</main>
+<script>
+(()=>{
+const c=document.getElementById('game'),g=c.getContext('2d'),overlay=document.getElementById('overlay'),title=document.getElementById('title'),desc=document.getElementById('desc'),play=document.getElementById('play'),scoreEl=document.getElementById('score'),birdsEl=document.getElementById('birds');
+const W=480,H=640,ground=560,A={x:105,y:420},pullMax=78;let bird,pigs,blocks,parts=[],score=0,birds=3,launched=false,drag=false,settled=0,ended=false,raf;
+const fa=n=>String(n).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[+d]),ui=()=>{scoreEl.textContent=fa(score);birdsEl.textContent=fa(birds)};
+function level(){bird={x:A.x,y:A.y,vx:0,vy:0,r:18,active:true};pigs=[{x:342,y:526,r:17,alive:true},{x:410,y:526,r:17,alive:true},{x:382,y:465,r:16,alive:true}];blocks=[{x:315,y:508,w:18,h:52},{x:405,y:508,w:18,h:52},{x:360,y:474,w:105,h:15},{x:350,y:423,w:18,h:48},{x:412,y:423,w:18,h:48},{x:380,y:390,w:95,h:14}].map(b=>({...b,hp:1}));parts=[];launched=false;drag=false;settled=0;ended=false;ui()}
+function birdDraw(x,y,r){g.save();g.translate(x,y);g.fillStyle='#e34e43';g.beginPath();g.arc(0,0,r,0,7);g.fill();g.fillStyle='white';g.beginPath();g.arc(6,-5,5,0,7);g.fill();g.fillStyle='#172333';g.beginPath();g.arc(8,-5,2,0,7);g.fill();g.fillStyle='#ffd45d';g.beginPath();g.moveTo(12,1);g.lineTo(27,6);g.lineTo(12,10);g.fill();g.fillStyle='#8e2928';g.beginPath();g.ellipse(-4,-15,9,4,-.5,0,7);g.fill();g.restore()}
+function pigDraw(p){g.save();g.translate(p.x,p.y);g.fillStyle='#76c957';g.beginPath();g.arc(0,0,p.r,0,7);g.fill();g.beginPath();g.arc(-10,-12,7,0,7);g.arc(10,-12,7,0,7);g.fill();g.fillStyle='white';g.beginPath();g.arc(-6,-4,4,0,7);g.arc(7,-4,4,0,7);g.fill();g.fillStyle='#233b2c';g.beginPath();g.arc(-5,-4,1.8,0,7);g.arc(8,-4,1.8,0,7);g.fill();g.fillStyle='#b1ec8c';g.beginPath();g.ellipse(1,6,9,6,0,0,7);g.fill();g.restore()}
+function draw(){g.clearRect(0,0,W,H);let sky=g.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#80cbed');sky.addColorStop(1,'#d9f1d0');g.fillStyle=sky;g.fillRect(0,0,W,H);g.fillStyle='#ffffff99';[[65,95],[300,130],[420,70]].forEach(([x,y])=>{g.beginPath();g.arc(x,y,17,0,7);g.arc(x+18,y-7,22,0,7);g.arc(x+40,y,16,0,7);g.fill()});g.fillStyle='#8dcf86';g.beginPath();g.moveTo(0,520);g.quadraticCurveTo(100,440,210,520);g.quadraticCurveTo(340,430,480,510);g.lineTo(480,640);g.lineTo(0,640);g.fill();g.fillStyle='#6cb65f';g.fillRect(0,ground,W,H-ground);g.fillStyle='#4b944d';g.fillRect(0,ground,W,8);
+g.strokeStyle='#754327';g.lineWidth=12;g.lineCap='round';g.beginPath();g.moveTo(91,ground);g.lineTo(100,410);g.lineTo(87,367);g.moveTo(100,410);g.lineTo(124,366);g.stroke();g.strokeStyle='#d6a05c';g.lineWidth=5;g.beginPath();g.moveTo(87,367);g.lineTo(100,410);g.lineTo(124,366);g.stroke();
+if(!launched&&bird){g.strokeStyle='#55331f';g.lineWidth=4;g.beginPath();g.moveTo(87,367);g.lineTo(bird.x,bird.y);g.lineTo(124,366);g.stroke()}
+blocks.forEach(b=>{if(b.hp){g.fillStyle='#c58a4b';g.beginPath();g.roundRect(b.x,b.y,b.w,b.h,4);g.fill();g.strokeStyle='#87552e';g.lineWidth=2;g.strokeRect(b.x+3,b.y+3,b.w-6,b.h-6)}});pigs.forEach(p=>p.alive&&pigDraw(p));if(bird&&bird.active)birdDraw(bird.x,bird.y,bird.r);parts.forEach(p=>{g.globalAlpha=p.life/30;g.fillStyle=p.color;g.fillRect(p.x,p.y,5,5);g.globalAlpha=1});if(drag){g.setLineDash([6,7]);g.strokeStyle='#fff';g.beginPath();g.moveTo(bird.x,bird.y);g.lineTo(bird.x-(bird.x-A.x)*2,bird.y-(bird.y-A.y)*2);g.stroke();g.setLineDash([])}}
+function pos(e){let r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}}
+c.addEventListener('pointerdown',e=>{if(!bird?.active||launched||ended)return;let p=pos(e);if(Math.hypot(p.x-bird.x,p.y-bird.y)<40){drag=true;c.setPointerCapture(e.pointerId)}});
+c.addEventListener('pointermove',e=>{if(!drag)return;let p=pos(e),dx=p.x-A.x,dy=p.y-A.y,l=Math.hypot(dx,dy);if(l>pullMax){dx*=pullMax/l;dy*=pullMax/l}bird.x=A.x+dx;bird.y=A.y+dy;draw()});
+function release(){if(!drag)return;drag=false;let dx=A.x-bird.x,dy=A.y-bird.y;if(Math.hypot(dx,dy)<9){bird.x=A.x;bird.y=A.y;draw();return}bird.vx=dx*.19;bird.vy=dy*.19;launched=true}
+c.addEventListener('pointerup',release);c.addEventListener('pointercancel',release);
+function burst(x,y,color){for(let i=0;i<9;i++)parts.push({x,y,vx:(Math.random()-.5)*5,vy:(Math.random()-.8)*5,life:30,color})}
+function finish(win){ended=true;title.textContent=win?'آفرین! برنده شدی 🎉':'تمام شد!';desc.textContent=(win?'همه‌ی خوک‌ها را زدی. ':'پرنده‌ها تمام شدند. ')+'امتیاز: '+fa(score);play.textContent='بازی دوباره';overlay.classList.remove('hide')}
+function tick(){if(launched&&bird?.active){bird.vy+=.34;bird.x+=bird.vx;bird.y+=bird.vy;bird.vx*=.995;bird.vy*=.995;if(bird.y+bird.r>ground){bird.y=ground-bird.r;bird.vy*=-.35;bird.vx*=.72;if(Math.abs(bird.vy)<1.2)bird.vy=0}
+pigs.forEach(p=>{if(p.alive&&Math.hypot(bird.x-p.x,bird.y-p.y)<bird.r+p.r){p.alive=false;score+=500;ui();burst(p.x,p.y,'#83d95d');bird.vx*=.65;bird.vy=-Math.abs(bird.vy)*.5}});
+blocks.forEach(b=>{if(!b.hp)return;let x=Math.max(b.x,Math.min(bird.x,b.x+b.w)),y=Math.max(b.y,Math.min(bird.y,b.y+b.h));if(Math.hypot(bird.x-x,bird.y-y)<bird.r){b.hp=0;score+=100;ui();burst(x,y,'#d49a5a');bird.vx*=.72;bird.vy=-Math.abs(bird.vy)*.45}});
+if(bird.x>W+60||bird.x<-60||bird.y>H+60)bird.active=false;if(Math.hypot(bird.vx,bird.vy)<1.1&&bird.y>=ground-bird.r-1)settled++;else settled=0;if(settled>25)bird.active=false;
+if(!bird.active){launched=false;birds--;ui();if(pigs.every(p=>!p.alive))finish(true);else if(birds<=0)finish(false);else bird={x:A.x,y:A.y,vx:0,vy:0,r:18,active:true}}}
+parts=parts.filter(p=>p.life-->0);parts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.12});draw();raf=requestAnimationFrame(tick)}
+function start(){cancelAnimationFrame(raf);score=0;birds=3;level();overlay.classList.add('hide');tick()}
+play.addEventListener('click',start);document.getElementById('reset').addEventListener('click',start);level();draw();
+})();
+</script>
+</body>
+</html>
